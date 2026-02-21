@@ -13,7 +13,7 @@ name: immich
 services:
   immich-server:
     container_name: immich_server
-    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    image: "{{ immich_server_container_image }}"
     # extends:
     #   file: hwaccel.transcoding.yml
     #   service: cpu # set to one of [nvenc, quicksync, rkmpp, vaapi, vaapi-wsl] for accelerated transcoding
@@ -24,7 +24,7 @@ services:
     env_file:
       - .env
     ports:
-      - '2283:2283'
+      - "{{ immich_port }}:2283"
     depends_on:
       - redis
       - database
@@ -36,7 +36,7 @@ services:
     container_name: immich_machine_learning
     # For hardware acceleration, add one of -[armnn, cuda, rocm, openvino, rknn] to the image tag.
     # Example tag: ${IMMICH_VERSION:-release}-cuda
-    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    image: "{{ immich_ml_container_image }}"
     # extends: # uncomment this section for hardware acceleration - see https://docs.immich.app/features/ml-hardware-acceleration
     #   file: hwaccel.ml.yml
     #   service: cpu # set to one of [armnn, cuda, rocm, openvino, openvino-wsl, rknn] for accelerated inference - use the `-wsl` version for WSL2 where applicable
@@ -50,21 +50,22 @@ services:
 
   redis:
     container_name: immich_redis
-    image: docker.io/valkey/valkey:8-bookworm@sha256:fea8b3e67b15729d4bb70589eb03367bab9ad1ee89c876f54327fc7c6e618571
+    image: "{{ immich_redis_container_image }}"
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
 
   database:
     container_name: immich_postgres
-    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+    image: "{{ immich_postgres_container_image }}"
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_DB: ${DB_DATABASE_NAME}
       POSTGRES_INITDB_ARGS: '--data-checksums'
-      # Uncomment the DB_STORAGE_TYPE: 'HDD' var if your database isn't stored on SSDs
-      # DB_STORAGE_TYPE: 'HDD'
+{% if immich_postgres_on_hdd %}
+      DB_STORAGE_TYPE: 'HDD'
+{% endif %}
     volumes:
       # Do not edit the next line. If you want to change the database storage location on your system, edit the value of DB_DATA_LOCATION in the .env file
       - ${DB_DATA_LOCATION}:/var/lib/postgresql/data

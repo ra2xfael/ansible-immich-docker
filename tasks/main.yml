@@ -2,16 +2,16 @@
 - name: "Create docker compose directory"
   become: true
   file:
-    path: "{{ immich.compose_directory }}"
+    path: "{{ immich_compose_directory }}"
     state: directory
-    owner: "{{ immich.user }}"
-    group: "{{ immich.group }}"
+    owner: "{{ immich_user }}"
+    group: "{{ immich_group }}"
     mode: u=rwX,g=r,o=
 
 - name: "Create data directory"
   become: true
   file:
-    path: "{{ immich.data_directory }}"
+    path: "{{ immich_data_directory }}"
     state: directory
     owner: www-data
     group: www-data
@@ -31,9 +31,9 @@
   become: true
   template:
     src: "env.j2"
-    dest: "{{ immich.compose_directory }}/.env"
-    owner: "{{ immich.user }}"
-    group: "{{ immich.group }}"
+    dest: "{{ immich_compose_directory }}/.env"
+    owner: "{{ immich_user }}"
+    group: "{{ immich_group }}"
     mode: u=rw,g=,o=
   notify: Restart immich container
 
@@ -44,49 +44,8 @@
     __gid: "{{ getent_group[{{ immich.group }}].1 }}"
   template:
     src: "docker-compose.yml.j2"
-    dest: "{{ immich.compose_directory }}/docker-compose.yml"
-    owner: "{{ immich.user }}"
-    group: "{{ immich.group }}"
+    dest: "{{ immich_compose_directory }}/docker-compose.yml"
+    owner: "{{ immich_user }}"
+    group: "{{ immich_group }}"
     mode: u=rwx,g=r,o=
   notify: Restart immich container
-
-- name: Flush handlers
-  meta: flush_handlers
-
-- name: "Create immich backup configuration"
-  vars:
-    backup:
-      user: "{{ immich.user }}"
-      directory: "{{ immich.backup_directory }}"
-      files:
-        - name: immich
-          path: "{{ immich.data_directory }}"
-      databases:
-        - container_name: immich_database
-          user: "{{ immich.postgres.user }}"
-  ansible.builtin.import_role:
-    name: backup
-
-#- name: Setup immich background jobs
-#  become: true
-#  vars:
-#    __uid: "{{ getent_passwd[immich.user].1 }}"
-#  cron:
-#    name: Run immich background jobs
-#    user: root
-#    hour: "*/4"
-#    job: "docker exec -u {{ __uid }} immich php cron.php"
-
-#- name: Configure immich via occ
-#  become: true
-#  community.docker.docker_container_exec:
-#    container: immich
-#    user: www-data
-#    command: php occ config:system:set {{ __key_value }}
-#  loop:
-#    - "logtimezone --value=\"Europe/Berlin\""
-#    - "maintenance_window_start --value=1 --type=integer"
-#    - "overwrite.cli.url --value={{ immich.web_path }}"
-#    - "overwriteprotocol --value=https"
-#  loop_control:
-#    loop_var: __key_value
